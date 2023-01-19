@@ -1,0 +1,11 @@
+.archive-body {
+  min-height: 1500px;
+}
+
+.link, .link:visited {
+  color: white;
+}
+
+.link:hover {
+  color: black;
+}
