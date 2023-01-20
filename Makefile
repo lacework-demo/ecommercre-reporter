@@ -114,9 +114,6 @@ else
 endif
 	@echo "\nThe cli has been installed at /usr/local/bin"
 
-.PHONY: build-all
-build-all: build-cli-cross-platform
-
 .PHONY: build-all-dev
 build-all-dev: install-cli-dev
 

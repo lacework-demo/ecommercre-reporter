@@ -341,6 +341,14 @@ build_cli_cross_platform() {
   make build-cli-cross-platform
 }
 
+build_frontend_release() {
+  log "building frontend release"
+  (cd frontend && BUILD_PATH="../dist/frontend" npm run build)
+
+  log "packaging frontend release"
+  tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist . 
+}
+
 generate_shasums() {
   ( cd bin/
     local _compressed

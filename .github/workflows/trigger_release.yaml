@@ -1,0 +1,22 @@
+name: Trigger Release
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # This job only runs if it's a push to main and is a release commit
+  trigger:
+    name: trigger-release
+    if: "contains(github.event.head_commit.message, 'release: v')"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          token: ${{secrets.PAT_GITHUB}}
+
+      - name: run prepare
+        env:
+          PAT_GITHUB: ${{secrets.PAT_GITHUB}}
+        run: ./scripts/release.sh trigger

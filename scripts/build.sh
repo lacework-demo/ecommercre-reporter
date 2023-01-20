@@ -27,7 +27,7 @@ log "building frontend"
 ## Build Backend
 log "building backend"
 make test
-make build-all
+make build-cli-cross-platform
 
 log "packaging"
 tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist . 
