@@ -343,6 +343,9 @@ build_cli_cross_platform() {
 }
 
 build_frontend_release() {
+  log "setting up frontend build env"
+  (cd frontend && npm i)
+
   log "building frontend release"
   (cd frontend && BUILD_PATH="../dist/frontend" npm run build)
 
