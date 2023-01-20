@@ -1,0 +1,52 @@
+- hosts: all
+  tasks:
+    - name: Create app dir
+      ansible.builtin.file:
+        path: /usr/local/ecomm_reporter
+        state: directory
+        mode: '0755'
+
+    - name: Download Backend Binary
+      ansible.builtin.unarchive:
+        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/sko-hol-ssrf-linux-amd64.tar.gz
+        dest: /usr/local/ecomm_reporter
+        remote_src: yes
+        mode: 0777
+
+    - name: Write Config file
+      blockinfile:
+        path: /etc/ecomm_reporter_backend.conf
+        create: true
+        state: present
+        owner: root
+        group: root
+        mode: 0600
+        block: |
+          ECOMM_BUCKET={{ ecomm_reporter_bucket }}
+          ECOMM_OBJECTSTORAGEENDPOINT={{ ecomm_reporter_object_storage_endpoint }}
+
+    - name: Write systemd config file
+      blockinfile:
+        path: /etc/systemd/system/ecomm_reporter_backend.service
+        create: true
+        state: present
+        block: |
+          [Unit]
+          Description=eCommerce Reporter Frontend
+
+          [Service]
+          EnvironmentFile=/etc/ecomm_reporter_backend.conf
+          PIDFile=/var/run/ecomm_reporter-backend.pid
+          Restart=always
+          KillSignal=SIGQUIT
+          WorkingDirectory=/usr/local/ecomm_reporter
+          ExecStart=/usr/local/ecomm_reporter/bin/reporter backend -b $ECOMM_BUCKET -o $ECOMM_OBJECTSTORAGEENDPOINT
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Make sure a service unit is running
+      ansible.builtin.systemd:
+        name: ecomm_reporter_backend.service
+        enabled: yes
+        state: started
