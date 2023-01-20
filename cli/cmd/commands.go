@@ -11,6 +11,13 @@ import (
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: Name,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Initialize config for child command
+			if err := initializeCmd(cmd); err != nil {
+				return err
+			}
+			return nil
+		},
 	}
 	return rootCmd
 }

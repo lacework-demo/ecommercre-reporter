@@ -3,10 +3,14 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -47,7 +51,8 @@ var (
 )
 
 const (
-	Name = "ecomm-reporter"
+	Name         = "ecomm-reporter"
+	envVarPrefix = "ECOMM"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -87,4 +92,44 @@ func errcheckWARN(err error) {
 	if err != nil {
 		fmt.Printf("%s", err)
 	}
+}
+
+// initializeCmd is called once per command to parse flags and corresponding env vars
+func initializeCmd(cmd *cobra.Command) error {
+	// require all vars used for flag values be prefixed <envVarPrefix>_<thing>
+	v := viper.New()
+	v.SetEnvPrefix(envVarPrefix)
+	v.AutomaticEnv()
+
+	// bind env vars to each flag so it can be set in the ENV or via commands
+	if err := bindFlags(cmd, v); err != nil {
+		return errors.Wrap(err, "failed to bind flags")
+	}
+
+	return nil
+}
+
+// bindFlags binds cobra flag to its associated viper configuration
+func bindFlags(cmd *cobra.Command, v *viper.Viper) error {
+	var retError error
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if retError != nil {
+			return
+		}
+
+		// environment variables can't have dashes in them, so remove dashes
+		if strings.Contains(f.Name, "-") {
+			envVarSuffix := strings.ToUpper(strings.ReplaceAll(f.Name, "-", ""))
+			envVarName := fmt.Sprintf("%s_%s", envVarPrefix, envVarSuffix)
+			retError = v.BindEnv(f.Name, envVarName)
+		}
+
+		// if the flag wasn't set apply the viper configuration value if it has a value
+		if retError == nil && !f.Changed && v.IsSet(f.Name) {
+			val := v.Get(f.Name)
+			retError = cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
+		}
+	})
+
+	return retError
 }

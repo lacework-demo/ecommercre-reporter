@@ -20,7 +20,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	_ "github.com/go-sql-driver/mysql" // mysql driver
+	_ "github.com/go-sql-driver/mysql" // sql/database mysql driver
 )
 
 func httpJSONPost(endpoint string, data io.Reader) (*http.Response, []byte, error) {
@@ -70,19 +70,19 @@ func getOrders(db *sql.DB) (string, error) {
 		return "", err
 	}
 
-	// https://stackoverflow.com/a/60386531 - database/sql rows to json
-	columnTypes, err := rows.ColumnTypes()
+	// adapted from https://stackoverflow.com/a/60386531 - database/sql rows to json
+	cT, err := rows.ColumnTypes()
 	if err != nil {
 		return "", err
 	}
 
-	count := len(columnTypes)
-	finalRows := []interface{}{}
+	count := len(cT)
+	marshalFromRows := []interface{}{}
 
 	for rows.Next() {
 		scanArgs := make([]interface{}, count)
 
-		for i, v := range columnTypes {
+		for i, v := range cT {
 			switch v.DatabaseTypeName() {
 			case "VARCHAR", "TEXT", "UUID", "TIMESTAMP":
 				scanArgs[i] = new(sql.NullString)
@@ -96,47 +96,39 @@ func getOrders(db *sql.DB) (string, error) {
 		}
 
 		err := rows.Scan(scanArgs...)
-
 		if err != nil {
-			log.Fatalf("bad, %s", err.Error())
+			log.Fatalf("failed to copy rows, %s", err.Error())
 		}
 
-		masterData := map[string]interface{}{}
-
-		for i, v := range columnTypes {
-
+		convertedRows := map[string]interface{}{}
+		for i, v := range cT {
 			if z, ok := (scanArgs[i]).(*sql.NullBool); ok {
-				masterData[v.Name()] = z.Bool
+				convertedRows[v.Name()] = z.Bool
 				continue
 			}
-
 			if z, ok := (scanArgs[i]).(*sql.NullString); ok {
-				masterData[v.Name()] = z.String
+				convertedRows[v.Name()] = z.String
 				continue
 			}
-
 			if z, ok := (scanArgs[i]).(*sql.NullInt64); ok {
-				masterData[v.Name()] = z.Int64
+				convertedRows[v.Name()] = z.Int64
 				continue
 			}
-
 			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
-				masterData[v.Name()] = z.Float64
+				convertedRows[v.Name()] = z.Float64
 				continue
 			}
-
 			if z, ok := (scanArgs[i]).(*sql.NullInt32); ok {
-				masterData[v.Name()] = z.Int32
+				convertedRows[v.Name()] = z.Int32
 				continue
 			}
-
-			masterData[v.Name()] = scanArgs[i]
+			convertedRows[v.Name()] = scanArgs[i]
 		}
 
-		finalRows = append(finalRows, masterData)
+		marshalFromRows = append(marshalFromRows, convertedRows)
 	}
 
-	z, err := json.Marshal(finalRows)
+	z, err := json.Marshal(marshalFromRows)
 	if err != nil {
 		return "", err
 	}
