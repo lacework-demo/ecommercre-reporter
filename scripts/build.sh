@@ -30,6 +30,6 @@ make test
 make build-cli-cross-platform
 
 log "packaging"
-tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist . 
+tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist  frontend/
 
 log "success!"

@@ -122,6 +122,7 @@ publish_release() {
   log "releasing v$VERSION"
   clean_cache
   build_cli_cross_platform
+  build_frontend_release
   compress_targets
   generate_shasums
   create_release
@@ -346,7 +347,7 @@ build_frontend_release() {
   (cd frontend && BUILD_PATH="../dist/frontend" npm run build)
 
   log "packaging frontend release"
-  tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist . 
+  tar --exclude '*.tgz' -zcvf dist/frontend-client.tgz -C ./dist  frontend/
 }
 
 generate_shasums() {
