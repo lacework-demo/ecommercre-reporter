@@ -136,9 +136,6 @@ endif
 ifeq (, $(shell which gox))
 	GOFLAGS=-mod=readonly go install github.com/mitchellh/gox@$(GOXVERSION)
 endif
-ifeq (, $(shell which x86_64-linux-musl-gcc || which brew))
-	brew install filosottile/musl-cross/musl-cross
-endif
 ifeq (, $(shell which gotestsum))
 	GOFLAGS=-mod=readonly go install gotest.tools/gotestsum@$(GOTESTSUMVERSION)
 endif
