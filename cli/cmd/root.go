@@ -30,6 +30,13 @@ var (
 	ConfigurationPath     string
 	AuthTokenPath         string
 	ReporterEndpoint      string
+	SpaBuildRoot          string
+	DBName                string
+	DBHost                string
+	DBPort                string
+	DBUser                string
+	DBPass                string
+	DBType                string
 	Endpoint              string
 	Homedir               string
 	ObjectStorageEndpoint string

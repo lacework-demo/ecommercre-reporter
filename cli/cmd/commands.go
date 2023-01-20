@@ -40,11 +40,23 @@ func newReporterFrontend() *cobra.Command {
 			if ReporterEndpoint == "" {
 				return errors.New("must pass --reporter-endpoint flag (-r)")
 			}
-			backend.StartFrontend(ReporterEndpoint)
 
+			if DBHost == "" || DBUser == "" || DBPass == "" || DBName == "" {
+				return errors.New("must set at minimum database name, host, user, and password")
+			}
+
+			connStr := fmt.Sprintf("%s:%s@tcp(%s)/%s", DBUser, DBPass, fmt.Sprintf("%s:%s", DBHost, DBPort), DBName)
+			backend.StartFrontend(ReporterEndpoint, DBType, connStr, SpaBuildRoot)
 			return nil
 		},
 	}
+	feCmd.PersistentFlags().StringVarP(&SpaBuildRoot, "app-build-path", "b", "./frontend/build", "SPA build output path")
+	feCmd.PersistentFlags().StringVarP(&DBName, "database-name", "n", "", "database name")
+	feCmd.PersistentFlags().StringVarP(&DBHost, "database-host", "H", "", "database host")
+	feCmd.PersistentFlags().StringVarP(&DBPort, "database-port", "P", "3306", "database port")
+	feCmd.PersistentFlags().StringVarP(&DBUser, "database-user", "u", "", "database user")
+	feCmd.PersistentFlags().StringVarP(&DBPass, "database-pass", "p", "", "database password")
+	feCmd.PersistentFlags().StringVarP(&DBType, "database-type", "t", "mysql", "database type")
 	feCmd.PersistentFlags().StringVarP(&ReporterEndpoint, "reporter-endpoint", "r", "", "url for the reporter service")
 
 	return feCmd

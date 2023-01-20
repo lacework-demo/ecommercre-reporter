@@ -63,12 +63,7 @@ func httpJSONGet(endpoint string) (*http.Response, []byte, error) {
 	return resp, body, nil
 }
 
-func getOrders() (string, error) {
-	db, err := sql.Open("mysql", "postgres:postgres@tcp(127.0.0.1)/order")
-	if err != nil {
-		return "", err
-	}
-
+func getOrders(db *sql.DB) (string, error) {
 	rows, err := db.QueryContext(context.Background(), "select * from orders order by id desc limit 5000")
 	if err != nil {
 		return "", err
@@ -148,13 +143,18 @@ func getOrders() (string, error) {
 	return string(z), err
 }
 
-func StartFrontend(reporterEndpoint string) {
+func StartFrontend(reporterEndpoint string, dbType string, dbConnString string, buildRoot string) {
+	db, err := sql.Open(dbType, dbConnString)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	r := gin.Default()
 	r.Use(cors.Default())
-	r.Use(static.Serve("/", static.LocalFile("./frontend/build", true)))
+	r.Use(static.Serve("/", static.LocalFile(buildRoot, true)))
 	g := r.Group("/api")
 	g.GET("/orders", func(c *gin.Context) {
-		o, err := getOrders()
+		o, err := getOrders(db)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
 			return
