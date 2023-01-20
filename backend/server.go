@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -250,7 +251,11 @@ type ArchiveURL struct {
 }
 
 func StartReporter(objectStorageEndpoint string, bucketName string, accessKey string, secretAccessKey string, staticRegion string) {
-	cfg := aws.Config{}
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	if staticRegion != "" {
 		cfg.Region = staticRegion
 	}
