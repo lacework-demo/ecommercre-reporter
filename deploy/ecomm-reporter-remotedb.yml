@@ -6,7 +6,7 @@ ecomm-reporter: # Deployment
         - Create two new Ubuntu EC2 instances
         - Create a new S3 bucket
   required_secrets:
-    - path: lacework.access_token
+    - path: ecomm.database_host
     - path: ecomm.database_name
     - path: ecomm.database_user
     - path: ecomm.database_pass
@@ -58,7 +58,7 @@ ecomm-reporter: # Deployment
         vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         subnet: !lookup /reporter-vpc/outputs/subnet_id1
         instance_name: reporter1-ec2-2
-        instance_type: t2.small
+        instance_type: t2.micro
         instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
         security_group_arns: !lookup /reporter-infra/outputs/security_group
         ports: "22"
@@ -76,7 +76,7 @@ ecomm-reporter: # Deployment
           - bucket
     - name: install-reporter-backend
       extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible
+      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible/backend.yml
       needs:
         - backend-ec2
       helpers:
@@ -93,29 +93,19 @@ ecomm-reporter: # Deployment
             mode: 0600
       args:
         user: "ubuntu"
-        galaxy:
-          roles:
-            - geerlingguy.mysql
         private_key: instance.pem
         inventory: !lookup /backend-ec2/outputs/ip
-        playbook:
-          - backend.yml
-          - lacework.yml
+        playbook: backend.yml
         privilege_escalation:
           become: true
         extra_vars:
-          deploy_lacework: true
-          lacework_access_token: !secret lacework.access_token
+          deploy_reporter_database: false
           ecomm_reporter_bucket: !lookup /reporter-s3/outputs/bucket
           ecomm_reporter_bucket_region: us-east-1
           ecomm_reporter_object_storage_endpoint: https://s3.amazonaws.com
-          deploy_reporter_database: true
-          ecomm_database_name: !secret ecomm.database_name
-          ecomm_database_user: !secret ecomm.database_user
-          ecomm_database_pass: !secret ecomm.database_pass
     - name: install-reporter-frontend
       extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible
+      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible/frontend.yml
       needs:
         - frontend-ec2
         - install-reporter-backend
@@ -141,46 +131,12 @@ ecomm-reporter: # Deployment
         user: "ubuntu"
         private_key: instance.pem
         inventory: !lookup /frontend-ec2/outputs/ip
-        playbook:
-          - frontend.yml
-          - lacework.yml
+        playbook: frontend.yml
         privilege_escalation:
           become: true
         extra_vars:
-          deploy_lacework: true
-          lacework_access_token: !secret lacework.access_token
           ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
-          ecomm_database_host: !lookup /backend-ec2/outputs/private_ip
-          ecomm_database_name: !secret ecomm.database_name
-          ecomm_database_user: !secret ecomm.database_user
-          ecomm_database_pass: !secret ecomm.database_pass
-    - name: deploy-traffic-generation
-      extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible/traffic.yml
-      needs:
-        - install-reporter-frontend
-      helpers:
-        - helper: ServiceAvailable
-          args:
-            max_wait: 60 # seconds
-            hostname: !lookup /backend-ec2/outputs/ip
-            port: 22
-        - helper: WriteValue
-          run_on_dryrun: true
-          args:
-            raw_value: !lookupSecret /backend-ec2/outputs/pem
-            dstfile: instance.pem
-            mode: 0600
-      args:
-        user: "ubuntu"
-        private_key: instance.pem
-        inventory: !lookup /backend-ec2/outputs/ip
-        playbook: traffic.yml
-        privilege_escalation:
-          become: true
-        extra_vars:
-          ecomm_reporter_url: !lookup /install-reporter-frontend/outputs/app_url
-          ecomm_database_host: !lookup /backend-ec2/outputs/private_ip
+          ecomm_database_host: !secret ecomm.database_host
           ecomm_database_name: !secret ecomm.database_name
           ecomm_database_user: !secret ecomm.database_user
           ecomm_database_pass: !secret ecomm.database_pass

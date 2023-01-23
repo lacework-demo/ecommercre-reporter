@@ -23,6 +23,7 @@
         mode: 0600
         block: |
           ECOMM_BUCKET={{ ecomm_reporter_bucket }}
+          ECOMM_STATICREGION={{ ecomm_reporter_bucket_region }}
           ECOMM_OBJECTSTORAGEENDPOINT={{ ecomm_reporter_object_storage_endpoint }}
 
     - name: Write systemd config file
@@ -40,7 +41,8 @@
           Restart=always
           KillSignal=SIGQUIT
           WorkingDirectory=/usr/local/ecomm_reporter
-          ExecStart=/usr/local/ecomm_reporter/bin/reporter backend -b $ECOMM_BUCKET -o $ECOMM_OBJECTSTORAGEENDPOINT
+          #ExecStart=/usr/local/ecomm_reporter/bin/reporter backend -b $ECOMM_BUCKET -o $ECOMM_OBJECTSTORAGEENDPOINT -r $ECOMM_BUCKET_REGION
+          ExecStart=/usr/local/ecomm_reporter/bin/reporter backend
 
           [Install]
           WantedBy=multi-user.target
@@ -50,3 +52,35 @@
         name: ecomm_reporter_backend.service
         enabled: yes
         state: started
+
+- hosts: all
+  become: yes
+  vars:
+    deploydb: "{{ deploy_reporter_database }}"
+    mysql_root_password: "{{ ecomm_database_pass }}"
+    mysql_databases:
+      - name: "{{ ecomm_database_name }}"
+    mysql_users:
+      - name: "{{ ecomm_database_user }}"
+        host: "%"
+        password: "{{ ecomm_database_pass }}"
+        priv: "orders.*:ALL"
+  roles:
+    - role: geerlingguy.mysql
+      when: deploydb
+  tasks:
+    - name: Download Sample Data
+      ansible.builtin.unarchive:
+        src: https://github.com/ipcrm/sko-hol-ssrf/releases/download/v0.0.1/reporter.sql.dump.tgz
+        dest: /var/tmp
+        remote_src: yes
+        mode: 0777
+      when: deploydb
+    - name: Import sample data
+      mysql_db:
+        state: import
+        name: "{{ ecomm_database_name }}"
+        target: /var/tmp/reporter.sql.dump
+        login_user: "{{ ecomm_database_user }}"
+        login_password: "{{ ecomm_database_pass }}"
+      when: deploydb

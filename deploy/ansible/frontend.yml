@@ -51,7 +51,7 @@
           Restart=always
           KillSignal=SIGQUIT
           WorkingDirectory=/usr/local/ecomm_reporter
-          ExecStart=/usr/local/ecomm_reporter/bin/reporter frontend -b $ECOMM_APPBUILDPATH -H $ECOMM_DATABASEHOST -n $ECOMM_DATABASENAME -p $ECOMM_DATABASEPASS -r $ECOMM_REPORTERENDPOINT -u $ECOMM_DATABASEUSER
+          ExecStart=/usr/local/ecomm_reporter/bin/reporter frontend
 
           [Install]
           WantedBy=multi-user.target

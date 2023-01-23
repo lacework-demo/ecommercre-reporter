@@ -1,0 +1,34 @@
+- hosts: all
+  become: yes
+  vars:
+    api_server: "{{ lacework_api_server | default('https://api.lacework.net/')}}"
+    deploy: "{{ deploy_lacework }}"
+  tasks:
+  - name: add apt signing key
+    when: deploy
+    apt_key:
+      keyserver: hkp://keyserver.ubuntu.com:80
+      id: EE0CC692
+      state: present
+  - name: add lacework repository into source list
+    when: deploy
+    apt_repository:
+      repo: "deb [arch=amd64] https://packages.lacework.net/latest/DEB/{{ ansible_distribution | lower  }} {{ ansible_distribution_release }} main"
+      filename: lacework
+      state: present
+      update_cache: yes
+  - name: install lacework datacollector
+    when: deploy
+    apt:
+      name: lacework
+      state: latest
+  - name: wait until /var/lib/lacework/config/ is created
+    when: deploy
+    wait_for:
+      path: /var/lib/lacework/config/
+  - name: write config.json
+    when: deploy
+    template:
+      src: templates/config.j2
+      dest: /var/lib/lacework/config/config.json
+

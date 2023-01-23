@@ -1,0 +1,47 @@
+- hosts: all
+  tasks:
+    - name: deploy traffic generation script
+      blockinfile:
+        path: /usr/local/share/ecomm.trafficmaker.sh
+        create: true
+        state: present
+        mode: 0755
+        block: |
+          #!/bin/bash
+          URL={{ ecomm_reporter_url }}
+          for i in `seq 1 5`
+          do
+            curl -q -L $URL/
+            sleep 1
+            curl -q -L $URL/api/orders
+            sleep 1
+            curl -q -L $URL/api/archives
+          done
+    - name: deploy order generation script
+      blockinfile:
+        path: /usr/local/share/ecomm.ordermaker.sh
+        create: true
+        state: present
+        mode: 0755
+        block: |
+          #!/bin/bash
+          TZ=GMT
+          for i in `seq 1 15`
+          do
+            DS=$(date +"%H:%M:%S %Z+0000")
+            echo $i
+            mysql -h {{ecomm_database_host}} -u{{ecomm_database_user}} -p{{ecomm_database_pass}} {{ecomm_database_name}} << EOF
+          INSERT INTO orders(id, details) VALUES (NULL, "$DS");
+          EOF
+            sleep 1
+          done
+    - name: execute traffic gen
+      ansible.builtin.cron:
+        name: "traffic-generator"
+        minute: "*/1"
+        job: "/usr/local/share/ecomm.trafficmaker.sh"
+    - name: execute order gen
+      ansible.builtin.cron:
+        name: "order-generator"
+        minute: "*/1"
+        job: "/usr/local/share/ecomm.ordermaker.sh"
