@@ -19,9 +19,9 @@ ecomm-reporter: # Deployment
         name: reporter-vpc
     - name: reporter-infra
       extension: Terraform
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/tf/infra
-        # location: "git+https://github.com/lacework-dev/detc-resources.git"
-        # subdir: "extensions/ec2instance"     description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/infra
       tags: infrastructure
       needs:
         - reporter-vpc
@@ -64,9 +64,9 @@ ecomm-reporter: # Deployment
         ports: "22"
     - name: reporter-s3
       extension: Terraform
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/tf/s3
-        # location: "git+https://github.com/lacework-dev/detc-resources.git"
-        # subdir: "extensions/ec2instance"     description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/s3
       tags: infrastructure
       needs:
         - reporter-vpc
@@ -76,7 +76,9 @@ ecomm-reporter: # Deployment
           - bucket
     - name: install-reporter-backend
       extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
       needs:
         - backend-ec2
       helpers:
@@ -115,7 +117,9 @@ ecomm-reporter: # Deployment
           ecomm_database_pass: !secret ecomm.database_pass
     - name: install-reporter-frontend
       extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
       needs:
         - frontend-ec2
         - install-reporter-backend
@@ -156,7 +160,9 @@ ecomm-reporter: # Deployment
           ecomm_database_pass: !secret ecomm.database_pass
     - name: deploy-traffic-generation
       extension: Ansible
-      source: /Users/matthewcadorette/git/sko-hol-ssrf/deploy/ansible/traffic.yml
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
       needs:
         - install-reporter-frontend
       helpers:
