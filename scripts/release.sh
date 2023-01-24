@@ -13,7 +13,7 @@ set -eou pipefail
 readonly project_name=sko-hol-ssrf
 readonly org_name=ipcrm
 readonly package_name=ecomm-reporter
-readonly binary_name=reporter
+readonly binary_name=ecomm-rpt
 readonly git_user="DETC Team"
 readonly git_email="detc-accounts@lacework.net"
 VERSION=$(cat VERSION)
@@ -387,14 +387,13 @@ compress_targets() {
   local _cli_name
 
   for target in ${TARGETS[*]}; do
-    _cli_name="bin/${binary_name}"
     if [[ "$target" =~ frontend ]]; then
-      cp "bin/${target}" "$_cli_name-fe"
+      _cli_name="bin/${binary_name}-fe"
     else 
-      cp "bin/${target}" "$_cli_name-be"
+      _cli_name="bin/${binary_name}-be"
     fi
 
-
+    cp "bin/${target}" "$_cli_name"
     if [[ "$target" =~ linux ]]; then
       _target_with_ext="bin/${target}.tar.gz"
       tar -czvf "$_target_with_ext" "$_cli_name" 2>/dev/null
