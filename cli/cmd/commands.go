@@ -8,21 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newRootCommand() *cobra.Command {
-	rootCmd := &cobra.Command{
-		Use: Name,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Initialize config for child command
-			if err := initializeCmd(cmd); err != nil {
-				return err
-			}
-			return nil
-		},
+func initCmds(cmd *cobra.Command, args []string) error {
+	// Initialize config for child command
+	if err := initializeCmd(cmd); err != nil {
+		return err
 	}
-	return rootCmd
+	return nil
 }
 
-func newVersionCommand() *cobra.Command {
+func newVersionCommand(name string) *cobra.Command {
 	// versionCmd represents the version command
 	versionCmd := &cobra.Command{
 		Use:   "version",
@@ -30,19 +24,19 @@ func newVersionCommand() *cobra.Command {
 		Long:  `Prints out the installed version of the CLI`,
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("%s cli v%s (sha:%s) (time:%s)", Name, Version, GitSHA, BuildTime)
+			fmt.Printf("%s cli v%s (sha:%s) (time:%s)", name, Version, GitSHA, BuildTime)
 		},
 	}
-
 	return versionCmd
 }
 
-func newReporterFrontend() *cobra.Command {
-	// feCmd represents the version command
+func NewReporterFrontend() *cobra.Command {
+	name := fmt.Sprintf("%s-fe", Name)
 	feCmd := &cobra.Command{
-		Use:   "frontend",
-		Short: "Starts the fronted",
-		Args:  cobra.NoArgs,
+		Use:               name,
+		Short:             "Starts the frontend",
+		Args:              cobra.NoArgs,
+		PersistentPreRunE: initCmds,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ReporterEndpoint == "" {
 				return errors.New("must pass --reporter-endpoint flag (-r)")
@@ -66,15 +60,17 @@ func newReporterFrontend() *cobra.Command {
 	feCmd.PersistentFlags().StringVarP(&DBType, "database-type", "t", "mysql", "database type")
 	feCmd.PersistentFlags().StringVarP(&ReporterEndpoint, "reporter-endpoint", "r", "", "url for the reporter service")
 
+	feCmd.AddCommand(newVersionCommand(name))
 	return feCmd
 }
 
-func newReporterBackend() *cobra.Command {
-	// rbCmd represents the version command
+func NewReporterBackend() *cobra.Command {
+	name := fmt.Sprintf("%s-be", Name)
 	rbCmd := &cobra.Command{
-		Use:   "backend",
-		Short: "Starts the backend",
-		Args:  cobra.NoArgs,
+		Use:               name,
+		Short:             "Starts the backend",
+		Args:              cobra.NoArgs,
+		PersistentPreRunE: initCmds,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if BucketName == "" {
 				return errors.New("must pass --bucket flag (-b)")
@@ -96,5 +92,6 @@ func newReporterBackend() *cobra.Command {
 	rbCmd.PersistentFlags().StringVarP(&SecretAccessKey, "secretaccesskey", "s", "", "secret access key for object storage if not set in environment")
 	rbCmd.PersistentFlags().StringVarP(&StaticRegion, "static-region", "r", "", "region to use for object storage if required")
 
+	rbCmd.AddCommand(newVersionCommand(name))
 	return rbCmd
 }

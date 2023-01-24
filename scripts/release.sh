@@ -12,19 +12,25 @@ set -eou pipefail
 
 readonly project_name=sko-hol-ssrf
 readonly org_name=ipcrm
-readonly package_name=sko-hol-ssrf
+readonly package_name=ecomm-reporter
 readonly binary_name=reporter
 readonly git_user="DETC Team"
 readonly git_email="detc-accounts@lacework.net"
 VERSION=$(cat VERSION)
 
 TARGETS=(
-  ${package_name}-darwin-amd64
-  ${package_name}-darwin-arm64
-  ${package_name}-linux-386
-  ${package_name}-linux-amd64
-  ${package_name}-linux-arm
-  ${package_name}-linux-arm64
+  ${package_name}-backend-darwin-amd64
+  ${package_name}-backend-darwin-arm64
+  ${package_name}-backend-linux-386
+  ${package_name}-backend-linux-amd64
+  ${package_name}-backend-linux-arm
+  ${package_name}-backend-linux-arm64
+  ${package_name}-frontend-darwin-amd64
+  ${package_name}-frontend-darwin-arm64
+  ${package_name}-frontend-linux-386
+  ${package_name}-frontend-linux-amd64
+  ${package_name}-frontend-linux-arm
+  ${package_name}-frontend-linux-arm64
 )
 
 usage() {
@@ -381,13 +387,13 @@ compress_targets() {
   local _cli_name
 
   for target in ${TARGETS[*]}; do
-    if [[ "$target" =~ exe ]]; then
-      _cli_name="bin/${binary_name}.exe"
-    else
-      _cli_name="bin/${binary_name}"
+    _cli_name="bin/${binary_name}"
+    if [[ "$target" =~ frontend ]]; then
+      cp "bin/${target}" "$_cli_name-fe"
+    else 
+      cp "bin/${target}" "$_cli_name-be"
     fi
 
-    cp "bin/${target}" "$_cli_name"
 
     if [[ "$target" =~ linux ]]; then
       _target_with_ext="bin/${target}.tar.gz"

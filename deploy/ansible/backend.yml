@@ -8,7 +8,7 @@
 
     - name: Download Backend Binary
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/sko-hol-ssrf-linux-amd64.tar.gz
+        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/ecomm-reporter-backend-linux-amd64.tar.gz
         dest: /usr/local/ecomm_reporter
         remote_src: yes
         mode: 0777
@@ -41,8 +41,7 @@
           Restart=always
           KillSignal=SIGQUIT
           WorkingDirectory=/usr/local/ecomm_reporter
-          #ExecStart=/usr/local/ecomm_reporter/bin/reporter backend -b $ECOMM_BUCKET -o $ECOMM_OBJECTSTORAGEENDPOINT -r $ECOMM_BUCKET_REGION
-          ExecStart=/usr/local/ecomm_reporter/bin/reporter backend
+          ExecStart=/usr/local/ecomm_reporter/bin/ecomm-rpt-be
 
           [Install]
           WantedBy=multi-user.target

@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -42,7 +40,6 @@ var (
 	DBPass                string
 	DBType                string
 	Endpoint              string
-	Homedir               string
 	ObjectStorageEndpoint string
 	BucketName            string
 	AccessKey             string
@@ -51,47 +48,15 @@ var (
 )
 
 const (
-	Name         = "ecomm-reporter"
+	Name         = "ecomm-rpt"
 	envVarPrefix = "ECOMM"
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() error {
-	// determine homedir
-	home, err := homedir.Dir()
-	if err != nil {
-		return errors.Wrap(err, "failed to locate homedir")
-	}
-	Homedir = home
-
-	// init commands
-	rootCmd := newRootCommand()
-	rootCmd.AddCommand(newVersionCommand())
-	rootCmd.AddCommand(newReporterFrontend())
-	rootCmd.AddCommand(newReporterBackend())
-
-	// first, verify if the user provided a command to execute,
-	// if no command was provided, only print out the usage message
-	if noCommandProvided() {
-		errcheckWARN(rootCmd.Help())
-		os.Exit(127)
-	}
-
+func Execute(cmd *cobra.Command) error {
 	// Run command
-	return rootCmd.Execute()
-}
-
-// noCommandProvided checks if a command or argument was provided
-func noCommandProvided() bool {
-	t := len(os.Args) <= 1
-	return t
-}
-
-func errcheckWARN(err error) {
-	if err != nil {
-		fmt.Printf("%s", err)
-	}
+	return cmd.Execute()
 }
 
 // initializeCmd is called once per command to parse flags and corresponding env vars

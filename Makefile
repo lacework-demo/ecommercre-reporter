@@ -12,8 +12,8 @@ GOLANGCILINTLSVERSION?=v0.0.7
 CIARTIFACTS?=ci-artifacts
 COVERAGEOUT?=coverage.out
 COVERAGEHTML?=coverage.html
-PACKAGENAME?=sko-hol-ssrf
-CLINAME?=reporter
+PACKAGENAME?=ecomm-reporter
+CLINAME?=ecomm-rpt
 GOFLAGS=-mod=vendor
 CGO_ENABLED?=1
 GO_LDFLAGS="-X github.com/ipcrm/sko-hol-ssrf/cli/cmd.Version=$(shell cat VERSION) \
@@ -70,49 +70,75 @@ imports-check: ## Lists imports issues
 
 .PHONY: build-cli-cross-platform
 build-cli-cross-platform:
-	gox -output="bin/$(PACKAGENAME)-{{.OS}}-{{.Arch}}" \
+	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
             -os="linux" \
             -arch="amd64 386" \
             -osarch="darwin/amd64 darwin/arm64 linux/arm linux/arm64" \
             -ldflags=$(GO_LDFLAGS) \
-            github.com/ipcrm/sko-hol-ssrf/cli
+            github.com/ipcrm/sko-hol-ssrf/cli/backend
+	gox -output="bin/$(PACKAGENAME)-frontend-{{.OS}}-{{.Arch}}" \
+            -os="linux" \
+            -arch="amd64 386" \
+            -osarch="darwin/amd64 darwin/arm64 linux/arm linux/arm64" \
+            -ldflags=$(GO_LDFLAGS) \
+            github.com/ipcrm/sko-hol-ssrf/cli/frontend
 
 .PHONY: build-cli-dev
 build-cli-dev:
 ifeq (x86_64, $(shell uname -m))
-	gox -output="bin/$(PACKAGENAME)-{{.OS}}-{{.Arch}}" \
+	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
 						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
 						-arch="amd64" \
 						-gcflags="all=-N -l" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli
+						github.com/ipcrm/sko-hol-ssrf/cli/backend
 else
-	gox -output="bin/$(PACKAGENAME)-{{.OS}}-{{.Arch}}" \
+	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
 						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
 						-arch="386" \
 						-gcflags="all=-N -l" \
 						-osarch="$(shell uname -s | tr '[:upper:]' '[:lower:]')/amd $(shell uname -s | tr '[:upper:]' '[:lower:]')/arm" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli
+						github.com/ipcrm/sko-hol-ssrf/cli/backend
 endif
+ifeq (x86_64, $(shell uname -m))
+	gox -output="bin/$(PACKAGENAME)-frontend-{{.OS}}-{{.Arch}}" \
+						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
+						-arch="amd64" \
+						-gcflags="all=-N -l" \
+						-ldflags=$(GO_LDFLAGS) \
+						github.com/ipcrm/sko-hol-ssrf/cli/frontend
+else
+	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
+						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
+						-arch="386" \
+						-gcflags="all=-N -l" \
+						-osarch="$(shell uname -s | tr '[:upper:]' '[:lower:]')/amd $(shell uname -s | tr '[:upper:]' '[:lower:]')/arm" \
+						-ldflags=$(GO_LDFLAGS) \
+						github.com/ipcrm/sko-hol-ssrf/cli/frontend
+endif
+
+.PHONY: copy-bins
+copy-bins:
+ifeq (x86_64, $(shell uname -m))
+	cp bin/$(PACKAGENAME)-backend-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64 /usr/local/bin/$(CLINAME)-be
+else
+	cp bin/$(PACKAGENAME)-backend-$(shell uname -s | tr '[:upper:]' '[:lower:]')-386 /usr/local/bin/$(CLINAME)-be
+endif
+	@echo "\nThe backend cli has been installed at /usr/local/bin"
+
+ifeq (x86_64, $(shell uname -m))
+	cp bin/$(PACKAGENAME)-frontend-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64 /usr/local/bin/$(CLINAME)-fe
+else
+	cp bin/$(PACKAGENAME)-frontend-$(shell uname -s | tr '[:upper:]' '[:lower:]')-386 /usr/local/bin/$(CLINAME)-fe
+endif
+	@echo "\nThe frontend cli has been installed at /usr/local/bin"
 
 .PHONY: install-cli-dev
-install-cli-dev: build-cli-dev
-ifeq (x86_64, $(shell uname -m))
-	cp bin/$(PACKAGENAME)-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64 /usr/local/bin/$(CLINAME)
-else
-	cp bin/$(PACKAGENAME)-$(shell uname -s | tr '[:upper:]' '[:lower:]')-386 /usr/local/bin/$(CLINAME)
-endif
-	@echo "\nThe cli has been installed at /usr/local/bin"
+install-cli-dev: build-cli-dev copy-bins
 
 .PHONY: install-cli
-install-cli: build-cli-cross-platform
-ifeq (x86_64, $(shell uname -m))
-	cp bin/$(PACKAGENAME)-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64 /usr/local/bin/$(CLINAME)
-else
-	cp bin/$(PACKAGENAME)-$(shell uname -s | tr '[:upper:]' '[:lower:]')-386 /usr/local/bin/$(CLINAME)
-endif
-	@echo "\nThe cli has been installed at /usr/local/bin"
+install-cli: build-cli-cross-platform copy-bins
 
 .PHONY: build-all-dev
 build-all-dev: install-cli-dev

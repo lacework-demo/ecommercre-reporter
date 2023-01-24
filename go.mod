@@ -13,7 +13,6 @@ require (
 	github.com/gin-contrib/static v0.0.1
 	github.com/gin-gonic/gin v1.8.2
 	github.com/go-sql-driver/mysql v1.7.0
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.1
