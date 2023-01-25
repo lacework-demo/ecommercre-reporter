@@ -31,8 +31,28 @@ ecomm-reporter: # Deployment
         tfvars:
           vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         outputs:
+          - name_suffix
           - security_group
           - instance_profile
+      helpers:
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: instance_tag
+            format: "appid={{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: frontend_instance_name
+            format: "rpt-frontend-{{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: backend_instance_name
+            format: "rpt-backend-{{ .name_suffix }}"
     - name: frontend-ec2
       description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
       extension: EC2Instance
@@ -40,10 +60,12 @@ ecomm-reporter: # Deployment
       needs:
         - reporter-infra
         - reporter-vpc
+        - backend-ec2
       args:
+        tags: !lookup /reporter-infra/outputs/instance_tag
         vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         subnet: !lookup /reporter-vpc/outputs/subnet_id1
-        instance_name: reporter1-ec2
+        instance_name: !lookup /reporter-infra/outputs/frontend_instance_name
         instance_type: t2.micro
         instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
         security_group_arns: !lookup /reporter-infra/outputs/security_group
@@ -56,9 +78,10 @@ ecomm-reporter: # Deployment
         - reporter-infra
         - reporter-vpc
       args:
+        tags: !lookup /reporter-infra/outputs/instance_tag
         vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         subnet: !lookup /reporter-vpc/outputs/subnet_id1
-        instance_name: reporter1-ec2-2
+        instance_name: !lookup /reporter-infra/outputs/backend_instance_name
         instance_type: t2.small
         instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
         security_group_arns: !lookup /reporter-infra/outputs/security_group
@@ -75,7 +98,7 @@ ecomm-reporter: # Deployment
         cloud: "AWS"
         outputs:
           - bucket
-    - name: install-reporter-backend
+    - name: deploy-backend
       extension: Ansible
       source:
         location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
@@ -117,14 +140,14 @@ ecomm-reporter: # Deployment
           ecomm_database_name: !secret ecomm.database_name
           ecomm_database_user: !secret ecomm.database_user
           ecomm_database_pass: !secret ecomm.database_pass
-    - name: install-reporter-frontend
+    - name: deploy-frontend
       extension: Ansible
       source:
         location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
         subdir: deploy/ansible
       needs:
         - frontend-ec2
-        - install-reporter-backend
+        - deploy-backend
       helpers:
         - helper: ServiceAvailable
           args:
@@ -156,17 +179,13 @@ ecomm-reporter: # Deployment
           deploy_lacework: true
           lacework_access_token: !secret lacework.access_token
           ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
-          ecomm_database_host: !secret ecomm.database_host
-          ecomm_database_name: !secret ecomm.database_name
-          ecomm_database_user: !secret ecomm.database_user
-          ecomm_database_pass: !secret ecomm.database_pass
     - name: deploy-traffic-generation
       extension: Ansible
       source:
         location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
         subdir: deploy/ansible
       needs:
-        - install-reporter-frontend
+        - deploy-frontend
       helpers:
         - helper: ServiceAvailable
           args:
@@ -187,8 +206,7 @@ ecomm-reporter: # Deployment
         privilege_escalation:
           become: true
         extra_vars:
-          ecomm_reporter_url: !lookup /install-reporter-frontend/outputs/app_url
-          ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
+          ecomm_reporter_url: !lookup /deploy-frontend/outputs/app_url
           ecomm_database_host: !secret ecomm.database_host
           ecomm_database_name: !secret ecomm.database_name
           ecomm_database_user: !secret ecomm.database_user

@@ -4,24 +4,10 @@
     api_server: "{{ lacework_api_server | default('https://api.lacework.net/')}}"
     deploy: "{{ deploy_lacework }}"
   tasks:
-  - name: add apt signing key
-    when: deploy
-    apt_key:
-      keyserver: hkp://keyserver.ubuntu.com:80
-      id: EE0CC692
-      state: present
-  - name: add lacework repository into source list
-    when: deploy
-    apt_repository:
-      repo: "deb [arch=amd64] https://packages.lacework.net/latest/DEB/{{ ansible_distribution | lower  }} {{ ansible_distribution_release }} main"
-      filename: lacework
-      state: present
-      update_cache: yes
   - name: install lacework datacollector
     when: deploy
     apt:
-      name: lacework
-      state: latest
+      deb: https://updates.lacework.net/6.2.0.10049_2022-12-02_release-v6.2_a561674a7c238bfa504f2111c4522d6cdc0345b9/latest/lacework_6.2.0.10049_amd64.deb
   - name: wait until /var/lib/lacework/config/ is created
     when: deploy
     wait_for:

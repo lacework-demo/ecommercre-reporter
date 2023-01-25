@@ -6,7 +6,7 @@
         state: directory
         mode: '0755'
 
-    - name: Download Backend Binary
+    - name: Download Frontend Binary
       ansible.builtin.unarchive:
         src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/ecomm-reporter-frontend-linux-amd64.tar.gz
         dest: /usr/local/ecomm_reporter

@@ -75,3 +75,7 @@ output "instance_profile" {
   value = aws_iam_instance_profile.reporter_ec2_instance_profile.id
 }
 
+output "name_suffix" {
+  value = local.name_suffix
+}
+
