@@ -1,0 +1,173 @@
+---
+ecomm-reporter: # Deployment
+  description: |
+    This plan will do the following;
+        - Create two new Ubuntu EC2 instances
+        - Create a new S3 bucket
+        - Deploy the eCommerce reporter application backend/frontend
+  required_secrets:
+    - path: lacework.access_token
+    - path: ecomm.database_host
+    - path: ecomm.database_name
+    - path: ecomm.database_user
+    - path: ecomm.database_pass
+    - path: ecomm.vpc_id
+    - path: ecomm.subnet_id
+    - path: ecomm.sg_id
+  steps:
+    - name: reporter-infra
+      extension: Terraform
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/infra
+      tags: infrastructure
+      args:
+        cloud: "AWS"
+        tfvars:
+          vpc_id: !secret ecomm.vpc_id
+        outputs:
+          - name_suffix
+          - security_group
+          - instance_profile
+      helpers:
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: instance_tag
+            format: "appid={{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: frontend_instance_name
+            format: "rpt-frontend-{{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: backend_instance_name
+            format: "rpt-backend-{{ .name_suffix }}"
+    - name: frontend-ec2
+      description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      extension: EC2Instance
+      tags: infrastructure
+      needs:
+        - reporter-infra
+        - backend-ec2
+      args:
+        tags: !lookup /reporter-infra/outputs/instance_tag
+        vpc_id: !secret ecomm.vpc_id
+        subnet: !secret ecomm.subnet_id
+        security_group_arns: !secret ecomm.sg_id
+        instance_name: !lookup /reporter-infra/outputs/frontend_instance_name
+        instance_type: t2.micro
+        instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
+        ports: "22,8080"
+    - name: backend-ec2
+      description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      extension: EC2Instance
+      tags: infrastructure
+      needs:
+        - reporter-infra
+      args:
+        tags: !lookup /reporter-infra/outputs/instance_tag
+        vpc_id: !secret ecomm.vpc_id
+        subnet: !secret ecomm.subnet_id
+        security_group_arns: !secret ecomm.sg_id
+        instance_name: !lookup /reporter-infra/outputs/backend_instance_name
+        instance_type: t2.small
+        instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
+        ports: "22"
+    - name: reporter-s3
+      extension: Terraform
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/s3
+      tags: infrastructure
+      needs:
+      args:
+        cloud: "AWS"
+        outputs:
+          - bucket
+    - name: deploy-backend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
+      needs:
+        - backend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: "ubuntu"
+        galaxy:
+          roles:
+            - geerlingguy.mysql
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        playbook:
+          - backend.yml
+          - lacework.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          deploy_lacework: true
+          lacework_access_token: !secret lacework.access_token
+          ecomm_reporter_bucket: !lookup /reporter-s3/outputs/bucket
+          ecomm_reporter_bucket_region: us-east-1
+          ecomm_reporter_object_storage_endpoint: https://s3.amazonaws.com
+          deploy_reporter_database: false
+    - name: deploy-frontend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
+      needs:
+        - frontend-ec2
+        - deploy-backend
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: app_url
+            format: "http://{{ .inventory }}:8080"
+      args:
+        user: "ubuntu"
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        playbook:
+          - frontend.yml
+          - lacework.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          deploy_lacework: true
+          lacework_access_token: !secret lacework.access_token
+          ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
+          ecomm_database_host: !secret ecomm.database_host
+          ecomm_database_name: !secret ecomm.database_name
+          ecomm_database_user: !secret ecomm.database_user
+          ecomm_database_pass: !secret ecomm.database_pass

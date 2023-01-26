@@ -2,18 +2,6 @@ variable "vpc_id" {
   type = string
 }
 
-resource "aws_security_group" "reporter-all-intra-traffic" {
-  name   = "ecomm-reporter-internal-traffic"
-  vpc_id = var.vpc_id
-
-  ingress {
-    protocol  = "ALL"
-    self      = true
-    from_port = 0
-    to_port   = 0
-  }
-}
-
 resource "random_string" "random" {
   length  = 10
   special = false
@@ -24,6 +12,17 @@ locals {
   name_suffix = random_string.random.result
 }
 
+resource "aws_security_group" "reporter-all-intra-traffic" {
+  name   = "ecomm-reporter-internal-traffic_${local.name_suffix}"
+  vpc_id = var.vpc_id
+
+  ingress {
+    protocol  = "ALL"
+    self      = true
+    from_port = 0
+    to_port   = 0
+  }
+}
 
 # EC2 IAM role setup
 resource "aws_iam_policy" "reporter_ec2_policy" { // ec2 policy
