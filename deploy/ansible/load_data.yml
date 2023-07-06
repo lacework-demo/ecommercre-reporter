@@ -1,0 +1,51 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Installing Mysql-client (Ubuntu)
+      package:
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - mysql-client 
+        - python3-mysqldb
+        - libmysqlclient-dev
+      become: yes
+      when: ansible_distribution == "Ubuntu"
+    - name: Installing Mysql-client (Amazon)
+      package:
+        name: "{{item}}"
+        state: present
+        update_cache: yes
+      loop:
+        - mysql
+        - mysql-devel
+        - pip
+        - gcc
+      become: yes
+      when: ansible_distribution == "Amazon"
+    - name: Install pymysql
+      pip:
+        name: "{{ item }}"
+        executable: pip3
+        state: present
+      with_items:
+        - PyMySQL
+      when: ansible_distribution == "Amazon"
+
+    - name: Download Sample Data
+      ansible.builtin.unarchive:
+        src: https://github.com/ipcrm/sko-hol-ssrf/releases/download/v0.0.1/reporter.sql.dump.tgz
+        dest: /var/tmp
+        remote_src: yes
+        mode: 0777
+
+    - name: Import sample data
+      mysql_db:
+        state: import
+        target: /var/tmp/reporter.sql.dump
+        name: "{{ ecomm_database_name }}"
+        login_host: "{{ ecomm_database_host }}"
+        login_user: "{{ ecomm_database_user }}"
+        login_password: "{{ ecomm_database_pass }}"
+        login_port: "{{ ecomm_database_port }}"

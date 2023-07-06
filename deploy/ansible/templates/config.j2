@@ -1,4 +1,6 @@
+
 {
   "serverurl": "{{ api_server }}",
-  "tokens": {"accesstoken": "{{ lacework_access_token }}"},
+  "tokens": {"accesstoken": "{{ access_token }}"},
+{% if enable_caa == true %}  "codeaware":{"enable":"true"}{% endif %}
 }

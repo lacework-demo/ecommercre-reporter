@@ -32,6 +32,7 @@
           ECOMM_APPBUILDPATH=/usr/local/ecomm_reporter/frontend
           ECOMM_REPORTERENDPOINT=http://{{ ecomm_reporter_endpoint }}:9999
           ECOMM_DATABASEHOST={{ ecomm_database_host }}
+          ECOMM_DATABASEPORT={{ ecomm_database_port | default("3306") }}
           ECOMM_DATABASENAME={{ ecomm_database_name }}
           ECOMM_DATABASEUSER={{ ecomm_database_user }}
           ECOMM_DATABASEPASS={{ ecomm_database_pass }}

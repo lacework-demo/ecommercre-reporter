@@ -1,0 +1,235 @@
+---
+ecomm-reporter: # Deployment
+  description: |
+    This plan will do the following;
+        - Create a new AWS VPC
+        - Create two new Ubuntu EC2 instances
+        - Create a new S3 bucket
+  required_secrets:
+    - path: lacework.access_token
+    - path: ecomm.database_name
+    - path: ecomm.database_user
+    - path: ecomm.database_pass
+  steps:
+    - name: reporter-vpc
+      description: Create a new AWS Virtual Private Cloud (VPC) for the reporter app to reside in
+      extension: VPC.AWS
+      tags: infrastructure
+      args:
+        name: reporter-vpc
+
+    - name: reporter-rds
+      extension: RDS
+      needs:
+        - reporter-vpc
+      tags: infrastructure
+      args:
+        vpc_id: !lookup /reporter-vpc/outputs/vpc_id
+        subnet1: !lookup /reporter-vpc/outputs/subnet_id1
+        subnet2: !lookup /reporter-vpc/outputs/subnet_id2
+        username: !secret ecomm.database_user
+        password: !secret ecomm.database_pass
+        name: !secret ecomm.database_name
+        engine: "mysql"
+
+    - name: reporter-infra
+      extension: Terraform
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/infra
+      tags: infrastructure
+      needs:
+        - reporter-vpc
+      args:
+        cloud: "AWS"
+        tfvars:
+          vpc_id: !lookup /reporter-vpc/outputs/vpc_id
+        outputs:
+          - name_suffix
+          - security_group
+          - instance_profile
+      helpers:
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: instance_tag
+            format: "appid={{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: frontend_instance_name
+            format: "rpt-frontend-{{ .name_suffix }}"
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: backend_instance_name
+            format: "rpt-backend-{{ .name_suffix }}"
+    - name: frontend-ec2
+      description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      extension: EC2Instance
+      tags: infrastructure
+      needs:
+        - reporter-infra
+        - reporter-vpc
+        - backend-ec2
+      args:
+        ami_type: amazonlinux
+        tags: !lookup /reporter-infra/outputs/instance_tag
+        vpc_id: !lookup /reporter-vpc/outputs/vpc_id
+        subnet: !lookup /reporter-vpc/outputs/subnet_id1
+        instance_name: !lookup /reporter-infra/outputs/frontend_instance_name
+        instance_type: t2.micro
+        instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
+        security_group_arns: !lookup /reporter-infra/outputs/security_group
+        ports: "22,8080"
+    - name: backend-ec2
+      description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
+      extension: EC2Instance
+      tags: infrastructure
+      needs:
+        - reporter-infra
+        - reporter-vpc
+      args:
+        ami_type: amazonlinux
+        tags: !lookup /reporter-infra/outputs/instance_tag
+        vpc_id: !lookup /reporter-vpc/outputs/vpc_id
+        subnet: !lookup /reporter-vpc/outputs/subnet_id1
+        instance_name: !lookup /reporter-infra/outputs/backend_instance_name
+        instance_type: t2.small
+        instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
+        security_group_arns: !lookup /reporter-infra/outputs/security_group
+        ports: "22"
+
+    - name: reporter-s3
+      extension: Terraform
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/tf/s3
+      tags: infrastructure
+      needs:
+        - reporter-vpc
+      args:
+        cloud: "AWS"
+        outputs:
+          - bucket
+    - name: deploy-backend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
+      needs:
+        - backend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: !lookup /backend-ec2/outputs/username
+        galaxy:
+          roles:
+            - geerlingguy.mysql
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        playbook:
+          - backend.yml
+          - lacework.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          deploy_lacework: true
+          lacework_access_token: !secret lacework.access_token
+          ecomm_reporter_bucket: !lookup /reporter-s3/outputs/bucket
+          ecomm_reporter_bucket_region: us-east-1
+          ecomm_reporter_object_storage_endpoint: https://s3.amazonaws.com
+          deploy_reporter_database: false
+
+    - name: deploy-frontend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
+      needs:
+        - frontend-ec2
+        - deploy-backend
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+        - helper: GenerateOutput
+          lifecycle: [afterCreate]
+          run_on_dryrun: false
+          args:
+            dst: app_url
+            format: "http://{{ .inventory }}:8080"
+      args:
+        user: !lookup /frontend-ec2/outputs/username
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        playbook:
+          - frontend.yml
+          - load_data.yml
+          - lacework.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          deploy_lacework: true
+          lacework_access_token: !secret lacework.access_token
+          ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
+          ecomm_database_host: !lookup /reporter-rds/outputs/address
+          ecomm_database_port: !lookup /reporter-rds/outputs/port
+          ecomm_database_name: !secret ecomm.database_name
+          ecomm_database_user: !secret ecomm.database_user
+          ecomm_database_pass: !secret ecomm.database_pass
+
+    - name: deploy-traffic-generation
+      extension: Ansible
+      source:
+        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        subdir: deploy/ansible
+      needs:
+        - deploy-frontend
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: !lookup /backend-ec2/outputs/username
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        playbook: traffic.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          ecomm_reporter_url: !lookup /deploy-frontend/outputs/app_url
+          ecomm_database_host: !lookup /reporter-rds/outputs/address
+          ecomm_database_port: !lookup /reporter-rds/outputs/port
+          ecomm_database_name: !secret ecomm.database_name
+          ecomm_database_user: !secret ecomm.database_user
+          ecomm_database_pass: !secret ecomm.database_pass
