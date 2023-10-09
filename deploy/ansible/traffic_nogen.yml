@@ -1,0 +1,25 @@
+- hosts: all
+  tasks:
+    - name: deploy traffic generation script
+      blockinfile:
+        path: /usr/local/share/ecomm.trafficmaker.sh
+        create: true
+        state: present
+        mode: 0755
+        block: |
+          #!/bin/bash
+          URL={{ ecomm_reporter_url }}
+          for i in `seq 1 5`
+          do
+            curl -q -L $URL/
+            sleep 1
+            curl -q -L $URL/api/orders
+            sleep 1
+            curl -q -L $URL/api/archives
+          done
+    - name: execute traffic gen
+      ansible.builtin.cron:
+        name: "traffic-generator"
+        minute: "*/1"
+        job: "/usr/local/share/ecomm.trafficmaker.sh"
+
