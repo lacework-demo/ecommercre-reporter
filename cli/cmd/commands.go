@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ipcrm/sko-hol-ssrf/backend"
+	"github.com/lacework-demo/ecommercre-reporter/backend"
 	"github.com/spf13/cobra"
 )
 

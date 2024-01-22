@@ -8,14 +8,14 @@
 
     - name: Download Frontend Binary
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/ecomm-reporter-frontend-linux-amd64.tar.gz
+        src: https://github.com/lacework-demo/ecommercre-reporter/releases/latest/download/ecomm-reporter-frontend-linux-amd64.tar.gz
         dest: /usr/local/ecomm_reporter
         remote_src: yes
         mode: 0777
 
     - name: Download Client App Frontend
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/frontend-client.tgz
+        src: https://github.com/lacework-demo/ecommercre-reporter/releases/latest/download/frontend-client.tgz
         dest: /usr/local/ecomm_reporter
         remote_src: yes
         mode: 0777

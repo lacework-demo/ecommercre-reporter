@@ -21,7 +21,7 @@ ecomm-reporter: # Deployment
     - name: reporter-infra
       extension: Terraform
       source:
-        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
         subdir: deploy/tf/infra
       tags: infrastructure
       needs:
@@ -89,7 +89,7 @@ ecomm-reporter: # Deployment
     - name: reporter-s3
       extension: Terraform
       source:
-        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
         subdir: deploy/tf/s3
       tags: infrastructure
       needs:
@@ -101,7 +101,7 @@ ecomm-reporter: # Deployment
     - name: deploy-backend
       extension: Ansible
       source:
-        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
         subdir: deploy/ansible
       needs:
         - backend-ec2
@@ -143,7 +143,7 @@ ecomm-reporter: # Deployment
     - name: deploy-frontend
       extension: Ansible
       source:
-        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
         subdir: deploy/ansible
       needs:
         - frontend-ec2
@@ -182,7 +182,7 @@ ecomm-reporter: # Deployment
     - name: deploy-traffic-generation
       extension: Ansible
       source:
-        location: "git+https://github.com/ipcrm/sko-hol-ssrf.git"
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
         subdir: deploy/ansible
       needs:
         - deploy-frontend

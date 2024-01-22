@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/ipcrm/sko-hol-ssrf/cli/cmd"
+	"github.com/lacework-demo/ecommercre-reporter/cli/cmd"
 )
 
 func main() {

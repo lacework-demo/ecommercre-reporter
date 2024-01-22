@@ -8,7 +8,7 @@
 
     - name: Download Backend Binary
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/latest/download/ecomm-reporter-backend-linux-amd64.tar.gz
+        src: https://github.com/lacework-demo/ecommercre-reporter/releases/latest/download/ecomm-reporter-backend-linux-amd64.tar.gz
         dest: /usr/local/ecomm_reporter
         remote_src: yes
         mode: 0777
@@ -70,7 +70,7 @@
   tasks:
     - name: Download Sample Data
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/download/v0.0.1/reporter.sql.dump.tgz
+        src: https://github.com/lacework-demo/ecommercre-reporter/releases/download/v0.0.1/reporter.sql.dump.tgz
         dest: /var/tmp
         remote_src: yes
         mode: 0777

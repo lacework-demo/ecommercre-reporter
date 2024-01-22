@@ -1,4 +1,4 @@
-module github.com/ipcrm/sko-hol-ssrf
+module github.com/lacework-demo/ecommercre-reporter
 
 go 1.17
 

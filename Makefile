@@ -16,9 +16,9 @@ PACKAGENAME?=ecomm-reporter
 CLINAME?=ecomm-rpt
 GOFLAGS=-mod=vendor
 CGO_ENABLED?=1
-GO_LDFLAGS="-X github.com/ipcrm/sko-hol-ssrf/cli/cmd.Version=$(shell cat VERSION) \
-            -X github.com/ipcrm/sko-hol-ssrf/cli/cmd.GitSHA=$(shell git rev-parse HEAD) \
-            -X github.com/ipcrm/sko-hol-ssrf/cli/cmd.BuildTime=$(shell date +%Y%m%d%H%M%S)"
+GO_LDFLAGS="-X github.com/lacework-demo/ecommercre-reporter/cli/cmd.Version=$(shell cat VERSION) \
+            -X github.com/lacework-demo/ecommercre-reporter/cli/cmd.GitSHA=$(shell git rev-parse HEAD) \
+            -X github.com/lacework-demo/ecommercre-reporter/cli/cmd.BuildTime=$(shell date +%Y%m%d%H%M%S)"
 
 export GOFLAGS GO_LDFLAGS CGO_ENABLED GOX_LINUX_AMD64_LDFLAGS
 
@@ -75,13 +75,13 @@ build-cli-cross-platform:
             -arch="amd64 386" \
             -osarch="darwin/amd64 darwin/arm64 linux/arm linux/arm64" \
             -ldflags=$(GO_LDFLAGS) \
-            github.com/ipcrm/sko-hol-ssrf/cli/backend
+            github.com/lacework-demo/ecommercre-reporter/cli/backend
 	gox -output="bin/$(PACKAGENAME)-frontend-{{.OS}}-{{.Arch}}" \
             -os="linux" \
             -arch="amd64 386" \
             -osarch="darwin/amd64 darwin/arm64 linux/arm linux/arm64" \
             -ldflags=$(GO_LDFLAGS) \
-            github.com/ipcrm/sko-hol-ssrf/cli/frontend
+            github.com/lacework-demo/ecommercre-reporter/cli/frontend
 
 .PHONY: build-cli-dev
 build-cli-dev:
@@ -91,7 +91,7 @@ ifeq (x86_64, $(shell uname -m))
 						-arch="amd64" \
 						-gcflags="all=-N -l" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli/backend
+						github.com/lacework-demo/ecommercre-reporter/cli/backend
 else
 	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
 						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
@@ -99,7 +99,7 @@ else
 						-gcflags="all=-N -l" \
 						-osarch="$(shell uname -s | tr '[:upper:]' '[:lower:]')/amd $(shell uname -s | tr '[:upper:]' '[:lower:]')/arm" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli/backend
+						github.com/lacework-demo/ecommercre-reporter/cli/backend
 endif
 ifeq (x86_64, $(shell uname -m))
 	gox -output="bin/$(PACKAGENAME)-frontend-{{.OS}}-{{.Arch}}" \
@@ -107,7 +107,7 @@ ifeq (x86_64, $(shell uname -m))
 						-arch="amd64" \
 						-gcflags="all=-N -l" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli/frontend
+						github.com/lacework-demo/ecommercre-reporter/cli/frontend
 else
 	gox -output="bin/$(PACKAGENAME)-backend-{{.OS}}-{{.Arch}}" \
 						-os=$(shell uname -s | tr '[:upper:]' '[:lower:]') \
@@ -115,7 +115,7 @@ else
 						-gcflags="all=-N -l" \
 						-osarch="$(shell uname -s | tr '[:upper:]' '[:lower:]')/amd $(shell uname -s | tr '[:upper:]' '[:lower:]')/arm" \
 						-ldflags=$(GO_LDFLAGS) \
-						github.com/ipcrm/sko-hol-ssrf/cli/frontend
+						github.com/lacework-demo/ecommercre-reporter/cli/frontend
 endif
 
 .PHONY: copy-bins
@@ -145,7 +145,7 @@ build-all-dev: install-cli-dev
 
 .PHONY: integration-test
 integration-test: install-tools ## Run integration tests
-	PATH=$(PWD)/bin:${PATH} gotestsum -f testname -- -v github.com/ipcrm/sko-hol-ssrf/test/integration
+	PATH=$(PWD)/bin:${PATH} gotestsum -f testname -- -v github.com/lacework-demo/ecommercre-reporter/test/integration
 
 .PHONY: dev-docs
 dev-docs:

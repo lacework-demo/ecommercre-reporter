@@ -7,7 +7,7 @@
         state: present
         update_cache: yes
       loop:
-        - mysql-client 
+        - mysql-client
         - python3-mysqldb
         - libmysqlclient-dev
       become: yes
@@ -35,7 +35,7 @@
 
     - name: Download Sample Data
       ansible.builtin.unarchive:
-        src: https://github.com/ipcrm/sko-hol-ssrf/releases/download/v0.0.1/reporter.sql.dump.tgz
+        src: https://github.com/lacework-demo/ecommercre-reporter/releases/download/v0.0.1/reporter.sql.dump.tgz
         dest: /var/tmp
         remote_src: yes
         mode: 0777
