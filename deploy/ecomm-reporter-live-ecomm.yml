@@ -15,6 +15,29 @@ ecomm-reporter: # Deployment
       default: https://agent.lacework.net
     - path: lacework.access_token
   steps:
+    - name: generate-ssh-key-pair
+      extension: Ansible
+      source:
+        location: "git+https://github.com/lacework-dev/detc-resources.git"
+        subdir: "util/ssh-keys/generate-key-pair/ansible"
+      tags: jenkins
+      lookup:
+      helpers:
+        - helper: FileToKv
+          lifecycle: [afterCreate]
+          args:
+            name: public_key
+            srcfile: id_rsa.pub
+        - helper: FileToKv
+          lifecycle: [afterCreate]
+          args:
+            name: private_key
+            srcfile: id_rsa
+      args:
+        playbook:
+          - generate.yml
+        inventory: localhost
+
     - name: reporter-vpc
       description: Create a new AWS Virtual Private Cloud (VPC) for the reporter app to reside in
       extension: VPC.AWS
@@ -38,7 +61,6 @@ ecomm-reporter: # Deployment
         region: !secret aws.region
         sourcevpc: !lookup /aws-k8s/k8s/outputs/vpc_id
         targetvpc: !lookup /reporter-vpc/outputs/vpc_id
-
 
     - name: reporter-infra
       extension: Terraform
@@ -93,6 +115,96 @@ ecomm-reporter: # Deployment
         security_group_arns: !lookup /reporter-infra/outputs/security_group
         ports: "22,8080"
 
+    - name: add-private-ssh-key-file-to-frontend-ec2
+      extension: Ansible
+      needs:
+        - frontend-ec2
+      source:
+        location: "git+https://github.com/lacework-dev/detc-resources.git"
+        subdir: "util/ssh-keys/add-ssh-private-key-file/ansible"
+      tags: ssh
+      lookup:
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          args:
+            raw_value: !lookup /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        user: "ubuntu"
+        extra_vars:
+          add_private_key: !lookup /generate-ssh-key-pair/outputs/private_key
+          private_key_name: "id_frontend"
+        playbook:
+          - add_file.yml
+
+    - name: add-key-to-auth-hosts-on-frontend-ec2
+      extension: Ansible
+      needs:
+        - frontend-ec2
+      source:
+        location: "git+https://github.com/lacework-dev/detc-resources.git"
+        subdir: "util/ssh-keys/add-ssh-pub-key-authorized-keys/ansible"
+      tags: ssh
+      lookup:
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          args:
+            raw_value: !lookup /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        user: "ubuntu"
+        extra_vars:
+          add_pub_key: !lookup /generate-ssh-key-pair/outputs/public_key
+        playbook:
+          - add.yml
+
+    - name: newman-frontend-ec2
+      extension: Ansible
+      source:
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
+        subdir: deploy/ansible
+      needs:
+        - frontend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: "ubuntu"
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        playbook:
+          - newman.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          newman_url: "http://localhost:8080"
+
+
     - name: backend-ec2
       description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
       extension: EC2Instance
@@ -108,6 +220,95 @@ ecomm-reporter: # Deployment
         security_group_arns: !lookup /reporter-infra/outputs/security_group
         instance_profile_arn: !lookup /reporter-infra/outputs/instance_profile
         ports: "22"
+
+    - name: add-public-ssh-key-to-backend-ec2
+      extension: Ansible
+      needs:
+        - backend-ec2
+      source:
+        location: "git+https://github.com/lacework-dev/detc-resources.git"
+        subdir: "util/ssh-keys/add-ssh-pub-key-authorized-keys/ansible"
+      tags: ssh
+      lookup:
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          args:
+            raw_value: !lookup /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        user: "ubuntu"
+        extra_vars:
+          add_pub_key: !lookup /generate-ssh-key-pair/outputs/public_key
+        playbook:
+          - add.yml
+
+    - name: add-key-to-auth-hosts-on-backend-ec2
+      extension: Ansible
+      needs:
+        - backend-ec2
+      source:
+        location: "git+https://github.com/lacework-dev/detc-resources.git"
+        subdir: "util/ssh-keys/add-ssh-pub-key-authorized-keys/ansible"
+      tags: ssh
+      lookup:
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          args:
+            raw_value: !lookup /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        user: "ubuntu"
+        extra_vars:
+          add_pub_key: !lookup /generate-ssh-key-pair/outputs/public_key
+        playbook:
+          - add.yml
+
+    - name: newman-backend-ec2
+      extension: Ansible
+      source:
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
+        subdir: deploy/ansible
+      needs:
+        - backend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: "ubuntu"
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        playbook:
+          - newman.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          newman_url: "http://localhost:9999/api/archives"
+
     - name: reporter-s3
       extension: Terraform
       source:
@@ -204,7 +405,6 @@ ecomm-reporter: # Deployment
           ecomm_database_name: "order"
           ecomm_database_user: !lookupSecret /ecommerce/ecommerce-orders-db-auth/outputs/db_username
           ecomm_database_pass: !lookupSecret /ecommerce/ecommerce-orders-db-auth/outputs/db_password
-
 
     - name: deploy-traffic-generation
       extension: Ansible

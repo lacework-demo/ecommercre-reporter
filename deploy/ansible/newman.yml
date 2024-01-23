@@ -1,0 +1,22 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Update package cache
+      ansible.builtin.package:
+        update_cache: true
+    - name: Install npm
+      ansible.builtin.apt:
+        name: npm
+        state: present
+    - name: Install newman
+      command: "npm install -g newman@v5.3.1"
+    - name: Create newman config file
+      template:
+        src: templates/newman.j2
+        dest: /home/ubuntu/newman.json
+    - name: Setup crontab to run newman
+      ansible.builtin.cron:
+        name: "run newman"
+        user: root
+        minute: "*/2"
+        job: "newman run /home/ubuntu/newman.json"
