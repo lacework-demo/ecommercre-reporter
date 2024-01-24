@@ -10,8 +10,8 @@
 #
 set -eou pipefail
 
-readonly project_name=sko-hol-ssrf
-readonly org_name=ipcrm
+readonly project_name=ecommercre-reporter
+readonly org_name=lacework-demo
 readonly package_name=ecomm-reporter
 readonly binary_name=ecomm-rpt
 readonly git_user="DETC Team"
@@ -389,7 +389,7 @@ compress_targets() {
   for target in ${TARGETS[*]}; do
     if [[ "$target" =~ frontend ]]; then
       _cli_name="bin/${binary_name}-fe"
-    else 
+    else
       _cli_name="bin/${binary_name}-be"
     fi
 
