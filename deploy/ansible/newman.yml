@@ -9,7 +9,7 @@
         name: npm
         state: present
     - name: Install newman
-      command: "npm install -g newman@v5.3.1"
+      command: "npm install -g newman@v5.2.0"
     - name: Create newman config file
       template:
         src: templates/newman.j2
