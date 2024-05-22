@@ -12,13 +12,14 @@ locals {
   bucket_name = "sko-bucket-${random_string.random.result}"
 }
 
+variable "tags" {
+  type = map(string)
+  default = {}
+}
+
 resource "aws_s3_bucket" "bucket" {
   bucket = local.bucket_name
-
-  tags = {
-    Name        = local.bucket_name
-    Environment = "sko"
-  }
+  tags = merge({"Name" = local.bucket_name}, var.tags)
   force_destroy = true
 }
 

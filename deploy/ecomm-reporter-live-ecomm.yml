@@ -106,7 +106,7 @@ ecomm-reporter: # Deployment
         - reporter-infra
         - backend-ec2
       args:
-        tags: !lookup /reporter-infra/outputs/instance_tag
+        tags: '{"deployment" = "ecommerce", "environment" = "production", "type" = "compute"}'
         vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         subnet: !lookup /reporter-vpc/outputs/subnet_id1
         instance_name: !lookup /reporter-infra/outputs/frontend_instance_name
@@ -204,6 +204,36 @@ ecomm-reporter: # Deployment
         extra_vars:
           newman_url: "http://localhost:8080"
 
+    - name: newman-frontend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
+        subdir: deploy/ansible
+      needs:
+        - frontend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /frontend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /frontend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: "ubuntu"
+        private_key: instance.pem
+        inventory: !lookup /frontend-ec2/outputs/ip
+        playbook:
+          - newman.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          newman_url: "http://localhost:8080"
+
 
     - name: backend-ec2
       description: Create a new Ubuntu AWS EC2 instance that will host the reporter application
@@ -212,7 +242,7 @@ ecomm-reporter: # Deployment
       needs:
         - reporter-infra
       args:
-        tags: !lookup /reporter-infra/outputs/instance_tag
+        tags: '{"deployment" = "ecommerce", "environment" = "production", "type" = "compute"}'
         vpc_id: !lookup /reporter-vpc/outputs/vpc_id
         subnet: !lookup /reporter-vpc/outputs/subnet_id1
         instance_name: !lookup /reporter-infra/outputs/backend_instance_name
@@ -309,6 +339,36 @@ ecomm-reporter: # Deployment
         extra_vars:
           newman_url: "http://localhost:9999/api/archives"
 
+    - name: newman-backend
+      extension: Ansible
+      source:
+        location: "git+https://github.com/lacework-demo/ecommercre-reporter.git"
+        subdir: deploy/ansible
+      needs:
+        - backend-ec2
+      helpers:
+        - helper: ServiceAvailable
+          args:
+            max_wait: 60 # seconds
+            hostname: !lookup /backend-ec2/outputs/ip
+            port: 22
+        - helper: WriteValue
+          run_on_dryrun: true
+          args:
+            raw_value: !lookupSecret /backend-ec2/outputs/pem
+            dstfile: instance.pem
+            mode: 0600
+      args:
+        user: "ubuntu"
+        private_key: instance.pem
+        inventory: !lookup /backend-ec2/outputs/ip
+        playbook:
+          - newman.yml
+        privilege_escalation:
+          become: true
+        extra_vars:
+          newman_url: "http://localhost:9999/api/archives"
+
     - name: reporter-s3
       extension: Terraform
       source:
@@ -318,6 +378,7 @@ ecomm-reporter: # Deployment
       needs:
       args:
         cloud: "AWS"
+        tags: '{"deployment" = "ecommerce", "environment" = "production", "type" = "datastore", "security" = "crown-jewels"}'
         outputs:
           - bucket
     - name: deploy-backend
@@ -352,7 +413,7 @@ ecomm-reporter: # Deployment
         privilege_escalation:
           become: true
         extra_vars:
-          deploy_lacework: true
+          deploy_lacework: false
           lacework_api_server: !secret lacework.api_url
           lacework_access_token: !secret lacework.access_token
           ecomm_reporter_bucket: !lookup /reporter-s3/outputs/bucket
@@ -396,7 +457,7 @@ ecomm-reporter: # Deployment
         privilege_escalation:
           become: true
         extra_vars:
-          deploy_lacework: true
+          deploy_lacework: false
           lacework_api_server: !secret lacework.api_url
           lacework_access_token: !secret lacework.access_token
           ecomm_reporter_endpoint: !lookup /backend-ec2/outputs/private_ip
